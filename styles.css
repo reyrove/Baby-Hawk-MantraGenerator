@@ -148,7 +148,6 @@ main {
   color: var(--code-text);
 }
 
-/* Improved code block styling */
 .message pre {
   position: relative;
   padding: 1rem;
@@ -228,7 +227,6 @@ main {
   transform: scale(1.05);
 }
 
-/* Code block scrollbar */
 .message pre::-webkit-scrollbar {
   height: 6px;
   width: 6px;

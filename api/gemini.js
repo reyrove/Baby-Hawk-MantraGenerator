@@ -20,8 +20,8 @@ module.exports = async (req, res) => {
     const userMessage = messages.find(m => m.role === 'user')?.content || '';
     const systemPrompt = messages.find(m => m.role === 'system')?.content || '';
 
-    // Use Gemini 2.0 Flash (more stable and better at code)
-    const model = 'gemini-2.0-flash-exp';
+    // Use Gemini 3.1 Flash-Lite (stable, cost-effective, good for code)
+    const model = 'gemini-3.1-flash-lite';
     
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GOOGLE_API_KEY}`,
