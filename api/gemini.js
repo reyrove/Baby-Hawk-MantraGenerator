@@ -20,46 +20,14 @@ module.exports = async (req, res) => {
     const userMessage = messages.find(m => m.role === 'user')?.content || '';
     const systemPrompt = messages.find(m => m.role === 'system')?.content || '';
 
-    // Enhanced prompt with explicit formatting instructions for Gemini
-    const enhancedPrompt = `${systemPrompt}
-
-CRITICAL INSTRUCTION FOR CODE BLOCKS:
-
-When you provide code, you MUST format it EXACTLY like this:
-
-\`\`\`html
-<div class="example">
-  Your code here
-</div>
-\`\`\`
-
-The code block MUST start with three backticks and the language name (html, css, js, svg, etc.)
-The code block MUST end with three backticks on their own line.
-DO NOT use any other format for code.
-
-Examples of CORRECT code blocks:
-\`\`\`html
-<h1>Hello World</h1>
-\`\`\`
-
-\`\`\`css
-body { color: gold; }
-\`\`\`
-
-\`\`\`js
-console.log("Om shanti");
-\`\`\`
-
-For text formatting:
-- Use [b]text[/b] for bold
-- Use [i]text[/i] for italic
-- NEVER use markdown like ** or *
+    // Prepare the prompt for Gemini 3.5 Flash
+    const fullPrompt = `${systemPrompt}
 
 User question: ${userMessage}
 
 Your response:`;
 
-    // Use Gemini 3.5 Flash
+    // Use Gemini 3.5 Flash with Interactions API format
     const model = 'gemini-3.5-flash';
     
     const response = await fetch(
@@ -72,14 +40,14 @@ Your response:`;
         body: JSON.stringify({
           contents: [{
             parts: [{
-              text: enhancedPrompt
+              text: fullPrompt
             }]
           }],
           generationConfig: {
-            temperature: 0.3,
+            // Gemini 3.5 Flash recommends NOT using temperature, top_p, top_k
+            // Use thinking_level instead
+            thinkingLevel: "medium", // Options: minimal, low, medium (default), high
             maxOutputTokens: 8192,
-            topK: 40,
-            topP: 0.95,
           }
         })
       }
@@ -95,10 +63,9 @@ Your response:`;
     let reply = data.candidates?.[0]?.content?.parts?.[0]?.text || 
                   "Baby Hawk is in deep meditation... 🧘‍♀️✨";
 
-    // Ensure code blocks are properly formatted
-    // If there's an unclosed code block, close it
+    // Ensure code blocks are properly closed
     const backtickCount = (reply.match(/```/g) || []).length;
-    if (backtickCount % 2 !== 0) {
+    if (backtickCount > 0 && backtickCount % 2 !== 0) {
       reply += '\n```';
     }
 
