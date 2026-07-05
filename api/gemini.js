@@ -20,7 +20,39 @@ module.exports = async (req, res) => {
     const userMessage = messages.find(m => m.role === 'user')?.content || '';
     const systemPrompt = messages.find(m => m.role === 'system')?.content || '';
 
-    // Use Interactions API (recommended for Gemini 3.5 Flash)
+    // Prepare the prompt with Llama-style formatting instructions
+    const fullPrompt = `${systemPrompt}
+
+IMPORTANT: You MUST respond using this EXACT format:
+
+1. Use [b]text[/b] for bold
+2. Use [i]text[/i] for italic
+3. For code blocks, use THREE backticks with language name:
+   \`\`\`html
+   your code here
+   \`\`\`
+4. NEVER use markdown (**bold**, *italic*, # headings)
+5. Include spiritual emojis: 🕉️✨🌸💖🧿🌙☮️
+
+EXAMPLE OF CORRECT RESPONSE:
+Here's a [b]beautiful mantra[/b] for you:
+
+[i]Let the light flow through your code[/i]
+
+\`\`\`html
+<div class="sacred-mantra">
+  <svg viewBox="0 0 100 100">
+    <circle cx="50" cy="50" r="40" fill="gold"/>
+  </svg>
+</div>
+\`\`\`
+
+Remember: [b]bold[/b], [i]italic[/i], and triple backticks for code!
+
+User question: ${userMessage}
+
+Your response (using the format above):`;
+
     const model = 'gemini-3.5-flash';
     
     const response = await fetch(
@@ -33,11 +65,11 @@ module.exports = async (req, res) => {
         body: JSON.stringify({
           contents: [{
             parts: [{
-              text: `${systemPrompt}\n\nUser: ${userMessage}\n\nBaby Hawk:`
+              text: fullPrompt
             }]
           }],
           generationConfig: {
-            temperature: 0.7,
+            temperature: 0.3,  // Lower for more consistent formatting
             maxOutputTokens: 8192,
             topP: 0.95,
             topK: 40,
