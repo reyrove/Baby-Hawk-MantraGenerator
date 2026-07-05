@@ -16,16 +16,27 @@ module.exports = async (req, res) => {
   try {
     const { messages } = req.body;
 
-    // Extract the user's message from the messages array
+    // Extract messages
     const userMessage = messages.find(m => m.role === 'user')?.content || '';
-    
-    // Get system prompt from messages
     const systemPrompt = messages.find(m => m.role === 'system')?.content || '';
 
-    // Use the correct model: gemini-3.5-flash (stable version)
+    // Enhanced prompt with explicit formatting instructions for Gemini
+    const enhancedPrompt = `${systemPrompt}
+
+IMPORTANT - YOUR RESPONSE MUST USE THIS FORMAT:
+- Bold: [b]text[/b]
+- Italic: [i]text[/i]  
+- Code blocks: \`\`\`html (or css, js, svg)
+- NEVER use markdown: No **, no *, no _, no ##
+- Always include spiritual emojis: 🕉️✨🌸💖🧿🌙☮️
+- Always mention Papa Hawk lovingly
+
+User question: ${userMessage}
+
+Your response (using [b]bold[/b] and [i]italic[/i] ONLY, no markdown):`;
+
+    // Use Gemini 3.5 Flash (stable version)
     const model = 'gemini-3.5-flash';
-    
-    console.log('Using model:', model); // For debugging
     
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GOOGLE_API_KEY}`,
@@ -37,11 +48,11 @@ module.exports = async (req, res) => {
         body: JSON.stringify({
           contents: [{
             parts: [{
-              text: `${systemPrompt}\n\nUser: ${userMessage}\n\nBaby Hawk:`
+              text: enhancedPrompt
             }]
           }],
           generationConfig: {
-            temperature: 0.7,
+            temperature: 0.3,
             maxOutputTokens: 2048,
             topK: 40,
             topP: 0.95,
@@ -57,16 +68,12 @@ module.exports = async (req, res) => {
       throw new Error(data.error?.message || 'Google API error');
     }
 
-    // Extract the response text from Gemini's format
     const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || 
                   "Baby Hawk is in deep meditation... 🧘‍♀️✨";
 
-    // Format response to match what your frontend expects
     return res.status(200).json({
       choices: [{
-        message: {
-          content: reply
-        }
+        message: { content: reply }
       }]
     });
     
