@@ -5,30 +5,63 @@ module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
 
   try {
     const { messages } = req.body;
-    const model = 'gemini-1.5-flash'; // Ensure you are using a supported model name
+
+    const userMessage = messages.find(m => m.role === 'user')?.content || '';
+    const systemPrompt = messages.find(m => m.role === 'system')?.content || '';
+
+    const model = 'gemini-3.1-flash-lite';
     
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GOOGLE_API_KEY}`,
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: messages.map(m => m.content).join('\n\n') }] }],
-          generationConfig: { temperature: 0.7 }
+          contents: [{
+            parts: [{
+              text: `${systemPrompt}\n\nUser: ${userMessage}`
+            }]
+          }],
+          generationConfig: {
+            temperature: 0.9,
+            maxOutputTokens: 2048,
+          }
         })
       }
     );
 
     const data = await response.json();
-    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "Baby Hawk is in deep meditation... 🧘‍♀️✨";
+    
+    if (!response.ok) {
+      console.error('Google API Error:', data);
+      throw new Error(data.error?.message || 'Google API error');
+    }
 
-    return res.status(200).json({ choices: [{ message: { content: reply } }] });
+    let reply = data.candidates?.[0]?.content?.parts?.[0]?.text || 
+                  "Baby Hawk is in deep meditation... 🧘‍♀️✨";
+
+    return res.status(200).json({
+      choices: [{
+        message: { content: reply }
+      }]
+    });
+    
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+    console.error('Baby Hawk API Error:', error);
+    return res.status(500).json({ 
+      error: error.message || 'Baby Hawk is deep in meditation... try again soon 🕉️✨' 
+    });
   }
 };
