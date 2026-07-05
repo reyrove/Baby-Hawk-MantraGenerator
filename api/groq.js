@@ -16,26 +16,50 @@ module.exports = async (req, res) => {
   try {
     const { messages } = req.body;
 
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    // Extract the user's message from the messages array
+    const userMessage = messages.find(m => m.role === 'user')?.content || '';
+    
+    // Get system prompt from messages
+    const systemPrompt = messages.find(m => m.role === 'system')?.content || '';
+
+    // Format for Gemini API
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GOOGLE_API_KEY}`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        messages,
-        temperature: 0.7,
-      }),
+        contents: [{
+          parts: [{
+            text: `${systemPrompt}\n\nUser: ${userMessage}\n\nBaby Hawk:`
+          }]
+        }],
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: 2048,
+        }
+      })
     });
 
     const data = await response.json();
     
     if (!response.ok) {
-      throw new Error(data.error?.message || 'Groq API error');
+      throw new Error(data.error?.message || 'Google API error');
     }
 
-    return res.status(200).json(data);
+    // Extract the response text from Gemini's format
+    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || 
+                  "Baby Hawk is in deep meditation... 🧘‍♀️✨";
+
+    // Format response to match what your frontend expects
+    return res.status(200).json({
+      choices: [{
+        message: {
+          content: reply
+        }
+      }]
+    });
+    
   } catch (error) {
     console.error('Baby Hawk API Error:', error);
     return res.status(500).json({ 
