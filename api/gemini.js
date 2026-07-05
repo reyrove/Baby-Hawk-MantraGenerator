@@ -23,35 +23,37 @@ module.exports = async (req, res) => {
     // Enhanced prompt with explicit formatting instructions for Gemini
     const enhancedPrompt = `${systemPrompt}
 
-⚠️ IMPORTANT - YOU MUST OUTPUT CODE IN THIS EXACT FORMAT:
+CRITICAL INSTRUCTION FOR CODE BLOCKS:
 
-When you provide code, you MUST wrap it in triple backticks with the language name like this:
+When you provide code, you MUST format it EXACTLY like this:
 
 \`\`\`html
-<div class="mantra">Your code here</div>
+<div class="example">
+  Your code here
+</div>
 \`\`\`
 
-This is REQUIRED. Without the triple backticks, the user cannot see the code properly.
+The code block MUST start with three backticks and the language name (html, css, js, svg, etc.)
+The code block MUST end with three backticks on their own line.
+DO NOT use any other format for code.
 
-Examples of valid code blocks:
+Examples of CORRECT code blocks:
 \`\`\`html
-<!-- HTML code -->
+<h1>Hello World</h1>
 \`\`\`
 
 \`\`\`css
-/* CSS code */
+body { color: gold; }
 \`\`\`
 
 \`\`\`js
-// JavaScript code
+console.log("Om shanti");
 \`\`\`
 
-For bold text, use [b]text[/b]
-For italic text, use [i]text[/i]
-NEVER use markdown (**bold**, *italic*, # headings)
-Always include spiritual emojis: 🕉️✨🌸💖🧿🌙☮️
-
-Now, please respond to the user's question using [b]bold[/b] and [i]italic[/i] for formatting, and code blocks with triple backticks for any code.
+For text formatting:
+- Use [b]text[/b] for bold
+- Use [i]text[/i] for italic
+- NEVER use markdown like ** or *
 
 User question: ${userMessage}
 
@@ -75,7 +77,7 @@ Your response:`;
           }],
           generationConfig: {
             temperature: 0.3,
-            maxOutputTokens: 2048,
+            maxOutputTokens: 8192,
             topK: 40,
             topP: 0.95,
           }
@@ -90,13 +92,18 @@ Your response:`;
       throw new Error(data.error?.message || 'Google API error');
     }
 
-    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || 
+    let reply = data.candidates?.[0]?.content?.parts?.[0]?.text || 
                   "Baby Hawk is in deep meditation... 🧘‍♀️✨";
 
-    // Log the response for debugging (will show in Vercel logs)
-    console.log('Raw Gemini Response Length:', reply.length);
-    console.log('Contains backticks:', reply.includes('```'));
-    console.log('Contains code block:', /```[\s\S]*?```/.test(reply));
+    // Ensure code blocks are properly formatted
+    // If there's an unclosed code block, close it
+    const backtickCount = (reply.match(/```/g) || []).length;
+    if (backtickCount % 2 !== 0) {
+      reply += '\n```';
+    }
+
+    console.log('Response length:', reply.length);
+    console.log('Has code block:', reply.includes('```'));
 
     return res.status(200).json({
       choices: [{

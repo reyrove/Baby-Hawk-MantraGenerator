@@ -233,16 +233,16 @@ function formatMessage(text) {
   const codeBlocks = [];
   let codeIndex = 0;
   
-  // Find all code blocks with triple backticks
+  // Pattern 1: Standard triple backticks with language
   processedText = processedText.replace(
     /```(\w*)\s*([\s\S]*?)```/g,
     (match, lang, code) => {
       const placeholder = `__CODE_BLOCK_${codeIndex}__`;
-      const language = lang.toLowerCase().trim();
+      const language = lang.toLowerCase().trim() || 'text';
       const cleanCode = code.trim();
       
-      let label = getCodeLabel(language);
-      const html = `${label}<pre><code class="language-${language || 'text'}">${escapeHtml(cleanCode)}</code><button class="copy-btn">📋 Copy Mantra</button></pre>`;
+      const label = getCodeLabel(language);
+      const html = `${label}<pre><code class="language-${language}">${escapeHtml(cleanCode)}</code><button class="copy-btn">📋 Copy Mantra</button></pre>`;
       
       codeBlocks.push(html);
       codeIndex++;
@@ -250,17 +250,39 @@ function formatMessage(text) {
     }
   );
 
-  // ===== STEP 2: Convert markdown to custom format =====
-  processedText = processedText.replace(/\*\*(.*?)\*\*/g, '[b]$1[/b]');
-  processedText = processedText.replace(/\*(.*?)\*/g, '[i]$1[/i]');
-  processedText = processedText.replace(/_(.*?)_/g, '[i]$1[/i]');
-  processedText = processedText.replace(/^#+\s+(.*?)$/gm, '[b]$1[/b]');
+  // Pattern 2: Triple backticks without language
+  processedText = processedText.replace(
+    /```\s*([\s\S]*?)```/g,
+    (match, code) => {
+      const placeholder = `__CODE_BLOCK_${codeIndex}__`;
+      const cleanCode = code.trim();
+      const label = getCodeLabel('text');
+      const html = `${label}<pre><code>${escapeHtml(cleanCode)}</code><button class="copy-btn">📋 Copy Mantra</button></pre>`;
+      
+      codeBlocks.push(html);
+      codeIndex++;
+      return placeholder;
+    }
+  );
 
-  // ===== STEP 3: Handle inline code =====
+  // ===== STEP 2: Handle inline code =====
   processedText = processedText.replace(
     /`([^`]+)`/g,
     '<code class="inline-code">$1</code>'
   );
+
+  // ===== STEP 3: Convert markdown to custom format =====
+  // Convert **bold** to [b]bold[/b]
+  processedText = processedText.replace(/\*\*(.*?)\*\*/g, '[b]$1[/b]');
+  
+  // Convert *italic* to [i]italic[/i]
+  processedText = processedText.replace(/\*(.*?)\*/g, '[i]$1[/i]');
+  
+  // Convert _italic_ to [i]italic[/i]
+  processedText = processedText.replace(/_(.*?)_/g, '[i]$1[/i]');
+  
+  // Convert # Headings to bold
+  processedText = processedText.replace(/^#+\s+(.*?)$/gm, '[b]$1[/b]');
 
   // ===== STEP 4: Handle bold and italic =====
   processedText = processedText.replace(
@@ -278,9 +300,10 @@ function formatMessage(text) {
     '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>'
   );
 
-  // ===== STEP 6: Convert newlines to <br> =====
+  // ===== STEP 6: Convert newlines =====
+  // Split into lines and join with <br>
   const lines = processedText.split('\n');
-  processedText = lines.map(line => line || '').join('<br>');
+  processedText = lines.join('<br>');
 
   // ===== STEP 7: Restore code blocks =====
   for (let i = 0; i < codeBlocks.length; i++) {
@@ -288,12 +311,17 @@ function formatMessage(text) {
     processedText = processedText.replace(placeholder, codeBlocks[i]);
   }
 
-  // ===== STEP 8: Clean up =====
+  // ===== STEP 8: Clean up extra <br> tags =====
   processedText = processedText.replace(/<br>?<div class="code-label"/g, '<div class="code-label"');
   processedText = processedText.replace(/<br>?<pre>/g, '<pre>');
   processedText = processedText.replace(/<\/pre><br>/g, '</pre>');
   processedText = processedText.replace(/<br>?<code class="inline-code"/g, '<code class="inline-code"');
+  
+  // Remove multiple <br> tags
   processedText = processedText.replace(/(<br>){3,}/g, '<br><br>');
+  
+  // Clean up any remaining CODEBLOCK text
+  processedText = processedText.replace(/CODEBLOCK\d+/g, '');
 
   return processedText;
 }
