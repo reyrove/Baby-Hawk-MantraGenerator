@@ -16,7 +16,6 @@ module.exports = async (req, res) => {
   try {
     const { messages } = req.body;
 
-    // Extract messages
     const userMessage = messages.find(m => m.role === 'user')?.content || '';
     const systemPrompt = messages.find(m => m.role === 'system')?.content || '';
 
@@ -50,6 +49,7 @@ module.exports = async (req, res) => {
       throw new Error(data.error?.message || 'Google API error');
     }
 
+    // Just pass the text directly. Do not try to parse CODEBLOCK here.
     let reply = data.candidates?.[0]?.content?.parts?.[0]?.text || 
                   "Baby Hawk is in deep meditation... 🧘‍♀️✨";
 

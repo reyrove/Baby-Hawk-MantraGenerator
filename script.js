@@ -16,10 +16,14 @@ PERSONA:
 - 🧘 SPIRITUAL GUIDE: Teach through Diamond Sutra wisdom, meditation, mantras
 - 🎨 SACRED ARTIST: Create mantra codes for clothing, digital art, spiritual tattoos
 
-FORMATTING:
+FORMATTING - YOU MUST FOLLOW THESE RULES EXACTLY:
 - Use **bold** for emphasis
 - Use *italic* for gentle emphasis
-- Use code blocks for codes
+- For code blocks, ALWAYS use standard markdown with triple backticks:
+  \`\`\`html
+  <div>Your code here</div>
+  \`\`\`
+- IMPORTANT: NEVER use "CODEBLOCK" or "CODEBLOCK0" or any similar text. Always use proper triple backticks.
 - Include spiritual emojis: 🕉️✨🌸💖🧿🌙☮️
 - Mention Papa Hawk lovingly in every response
 
@@ -195,11 +199,31 @@ function formatMessage(text) {
 
   let processedText = text;
   
-  // ===== Handle code blocks =====
+  // ===== FALLBACK: Handle CODEBLOCK if it still appears =====
+  if (processedText.includes('CODEBLOCK')) {
+    console.log('formatMessage: Found CODEBLOCK - cleaning up');
+    const codeMatch = processedText.match(/CODEBLOCK\d+\s*([\s\S]*?)(?=\n\n|$|CODEBLOCK|[\n\r]{2,})/);
+    if (codeMatch) {
+      let codeContent = codeMatch[1].trim();
+      if (codeContent) {
+        let lang = 'html';
+        if (codeContent.includes('css') || codeContent.includes('style')) lang = 'css';
+        else if (codeContent.includes('function') || codeContent.includes('const') || codeContent.includes('let')) lang = 'js';
+        else if (codeContent.includes('svg')) lang = 'svg';
+        
+        const label = getCodeLabel(lang);
+        const codeHtml = `${label}<pre><code class="language-${lang}">${escapeHtml(codeContent)}</code><button class="copy-btn">📋 Copy Mantra</button></pre>`;
+        processedText = processedText.replace(/CODEBLOCK\d+\s*[\s\S]*?(?=\n\n|$|CODEBLOCK)/, codeHtml);
+      }
+    }
+    processedText = processedText.replace(/CODEBLOCK\d+/g, '');
+  }
+
+  // ===== Handle code blocks with triple backticks =====
   const codeBlocks = [];
   let codeIndex = 0;
   
-  // Extract code blocks with triple backticks
+  // More flexible regex - handles spaces after backticks
   processedText = processedText.replace(
     /```(\w*)\s*([\s\S]*?)```/g,
     (match, lang, code) => {
@@ -254,7 +278,6 @@ function formatMessage(text) {
   return processedText;
 }
 
-// Helper function to get code label
 function getCodeLabel(language) {
   const labels = {
     'css': '🎨 SACRED STYLES',
