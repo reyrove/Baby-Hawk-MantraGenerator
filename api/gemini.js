@@ -20,8 +20,8 @@ module.exports = async (req, res) => {
     const userMessage = messages.find(m => m.role === 'user')?.content || '';
     const systemPrompt = messages.find(m => m.role === 'system')?.content || '';
 
-    // Use Interactions API (recommended for Gemini 3.5 Flash)
-    const model = 'gemini-3.5-flash';
+    // Use Gemini 2.0 Flash (more stable and better at code)
+    const model = 'gemini-2.0-flash-exp';
     
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GOOGLE_API_KEY}`,
@@ -56,21 +56,10 @@ module.exports = async (req, res) => {
     let reply = data.candidates?.[0]?.content?.parts?.[0]?.text || 
                   "Baby Hawk is in deep meditation... 🧘‍♀️✨";
 
-    // If Gemini doesn't use proper code blocks, force format them
-    // Check if the response has code-like content but without proper formatting
-    if (!reply.includes('```') && (reply.includes('div') || reply.includes('svg') || reply.includes('html') || reply.includes('css') || reply.includes('js'))) {
-      // Try to extract code from the response
-      const codeMatch = reply.match(/(?:<|{|\(|function|class|import|const|let|var|div|svg|html|css|body)/i);
-      if (codeMatch) {
-        // Find where code might start
-        const codeStart = reply.indexOf(codeMatch[0]);
-        if (codeStart > 0) {
-          const beforeCode = reply.substring(0, codeStart);
-          const codeContent = reply.substring(codeStart);
-          // Wrap the code in proper code blocks
-          reply = beforeCode + '\n\n```html\n' + codeContent.trim() + '\n```';
-        }
-      }
+    // Ensure code blocks are properly closed
+    const backtickCount = (reply.match(/```/g) || []).length;
+    if (backtickCount > 0 && backtickCount % 2 !== 0) {
+      reply += '\n```';
     }
 
     console.log('Response length:', reply.length);
