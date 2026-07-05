@@ -20,14 +20,7 @@ module.exports = async (req, res) => {
     const userMessage = messages.find(m => m.role === 'user')?.content || '';
     const systemPrompt = messages.find(m => m.role === 'system')?.content || '';
 
-    // Prepare the prompt for Gemini 3.5 Flash
-    const fullPrompt = `${systemPrompt}
-
-User question: ${userMessage}
-
-Your response:`;
-
-    // Use Gemini 3.5 Flash with Interactions API format
+    // Use Interactions API (recommended for Gemini 3.5 Flash)
     const model = 'gemini-3.5-flash';
     
     const response = await fetch(
@@ -40,14 +33,14 @@ Your response:`;
         body: JSON.stringify({
           contents: [{
             parts: [{
-              text: fullPrompt
+              text: `${systemPrompt}\n\nUser: ${userMessage}\n\nBaby Hawk:`
             }]
           }],
           generationConfig: {
-            // Gemini 3.5 Flash recommends NOT using temperature, top_p, top_k
-            // Use thinking_level instead
-            thinkingLevel: "medium", // Options: minimal, low, medium (default), high
+            temperature: 0.7,
             maxOutputTokens: 8192,
+            topP: 0.95,
+            topK: 40,
           }
         })
       }
