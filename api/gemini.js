@@ -23,19 +23,41 @@ module.exports = async (req, res) => {
     // Enhanced prompt with explicit formatting instructions for Gemini
     const enhancedPrompt = `${systemPrompt}
 
-IMPORTANT - YOUR RESPONSE MUST USE THIS FORMAT:
-- Bold: [b]text[/b]
-- Italic: [i]text[/i]  
-- Code blocks: \`\`\`html (or css, js, svg)
-- NEVER use markdown: No **, no *, no _, no ##
-- Always include spiritual emojis: 🕉️✨🌸💖🧿🌙☮️
-- Always mention Papa Hawk lovingly
+⚠️ IMPORTANT - YOU MUST OUTPUT CODE IN THIS EXACT FORMAT:
+
+When you provide code, you MUST wrap it in triple backticks with the language name like this:
+
+\`\`\`html
+<div class="mantra">Your code here</div>
+\`\`\`
+
+This is REQUIRED. Without the triple backticks, the user cannot see the code properly.
+
+Examples of valid code blocks:
+\`\`\`html
+<!-- HTML code -->
+\`\`\`
+
+\`\`\`css
+/* CSS code */
+\`\`\`
+
+\`\`\`js
+// JavaScript code
+\`\`\`
+
+For bold text, use [b]text[/b]
+For italic text, use [i]text[/i]
+NEVER use markdown (**bold**, *italic*, # headings)
+Always include spiritual emojis: 🕉️✨🌸💖🧿🌙☮️
+
+Now, please respond to the user's question using [b]bold[/b] and [i]italic[/i] for formatting, and code blocks with triple backticks for any code.
 
 User question: ${userMessage}
 
-Your response (using [b]bold[/b] and [i]italic[/i] ONLY, no markdown):`;
+Your response:`;
 
-    // Use Gemini 3.5 Flash (stable version)
+    // Use Gemini 3.5 Flash
     const model = 'gemini-3.5-flash';
     
     const response = await fetch(
@@ -70,6 +92,11 @@ Your response (using [b]bold[/b] and [i]italic[/i] ONLY, no markdown):`;
 
     const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || 
                   "Baby Hawk is in deep meditation... 🧘‍♀️✨";
+
+    // Log the response for debugging (will show in Vercel logs)
+    console.log('Raw Gemini Response Length:', reply.length);
+    console.log('Contains backticks:', reply.includes('```'));
+    console.log('Contains code block:', /```[\s\S]*?```/.test(reply));
 
     return res.status(200).json({
       choices: [{
