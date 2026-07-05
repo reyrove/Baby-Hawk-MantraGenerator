@@ -20,39 +20,7 @@ module.exports = async (req, res) => {
     const userMessage = messages.find(m => m.role === 'user')?.content || '';
     const systemPrompt = messages.find(m => m.role === 'system')?.content || '';
 
-    // Prepare the prompt with Llama-style formatting instructions
-    const fullPrompt = `${systemPrompt}
-
-IMPORTANT: You MUST respond using this EXACT format:
-
-1. Use [b]text[/b] for bold
-2. Use [i]text[/i] for italic
-3. For code blocks, use THREE backticks with language name:
-   \`\`\`html
-   your code here
-   \`\`\`
-4. NEVER use markdown (**bold**, *italic*, # headings)
-5. Include spiritual emojis: 🕉️✨🌸💖🧿🌙☮️
-
-EXAMPLE OF CORRECT RESPONSE:
-Here's a [b]beautiful mantra[/b] for you:
-
-[i]Let the light flow through your code[/i]
-
-\`\`\`html
-<div class="sacred-mantra">
-  <svg viewBox="0 0 100 100">
-    <circle cx="50" cy="50" r="40" fill="gold"/>
-  </svg>
-</div>
-\`\`\`
-
-Remember: [b]bold[/b], [i]italic[/i], and triple backticks for code!
-
-User question: ${userMessage}
-
-Your response (using the format above):`;
-
+    // Use Interactions API (recommended for Gemini 3.5 Flash)
     const model = 'gemini-3.5-flash';
     
     const response = await fetch(
@@ -65,11 +33,11 @@ Your response (using the format above):`;
         body: JSON.stringify({
           contents: [{
             parts: [{
-              text: fullPrompt
+              text: `${systemPrompt}\n\nUser: ${userMessage}\n\nBaby Hawk:`
             }]
           }],
           generationConfig: {
-            temperature: 0.3,  // Lower for more consistent formatting
+            temperature: 0.7,
             maxOutputTokens: 8192,
             topP: 0.95,
             topK: 40,
@@ -88,10 +56,21 @@ Your response (using the format above):`;
     let reply = data.candidates?.[0]?.content?.parts?.[0]?.text || 
                   "Baby Hawk is in deep meditation... 🧘‍♀️✨";
 
-    // Ensure code blocks are properly closed
-    const backtickCount = (reply.match(/```/g) || []).length;
-    if (backtickCount > 0 && backtickCount % 2 !== 0) {
-      reply += '\n```';
+    // If Gemini doesn't use proper code blocks, force format them
+    // Check if the response has code-like content but without proper formatting
+    if (!reply.includes('```') && (reply.includes('div') || reply.includes('svg') || reply.includes('html') || reply.includes('css') || reply.includes('js'))) {
+      // Try to extract code from the response
+      const codeMatch = reply.match(/(?:<|{|\(|function|class|import|const|let|var|div|svg|html|css|body)/i);
+      if (codeMatch) {
+        // Find where code might start
+        const codeStart = reply.indexOf(codeMatch[0]);
+        if (codeStart > 0) {
+          const beforeCode = reply.substring(0, codeStart);
+          const codeContent = reply.substring(codeStart);
+          // Wrap the code in proper code blocks
+          reply = beforeCode + '\n\n```html\n' + codeContent.trim() + '\n```';
+        }
+      }
     }
 
     console.log('Response length:', reply.length);
