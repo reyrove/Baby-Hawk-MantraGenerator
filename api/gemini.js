@@ -20,7 +20,6 @@ module.exports = async (req, res) => {
     const userMessage = messages.find(m => m.role === 'user')?.content || '';
     const systemPrompt = messages.find(m => m.role === 'system')?.content || '';
 
-    // Use Gemini 3.1 Flash-Lite (stable, cost-effective, good for code)
     const model = 'gemini-3.1-flash-lite';
     
     const response = await fetch(
@@ -33,14 +32,12 @@ module.exports = async (req, res) => {
         body: JSON.stringify({
           contents: [{
             parts: [{
-              text: `${systemPrompt}\n\nUser: ${userMessage}\n\nBaby Hawk:`
+              text: `${systemPrompt}\n\nUser: ${userMessage}`
             }]
           }],
           generationConfig: {
             temperature: 0.7,
             maxOutputTokens: 8192,
-            topP: 0.95,
-            topK: 40,
           }
         })
       }
@@ -49,21 +46,12 @@ module.exports = async (req, res) => {
     const data = await response.json();
     
     if (!response.ok) {
-      console.error('Google API Error Details:', JSON.stringify(data, null, 2));
+      console.error('Google API Error:', data);
       throw new Error(data.error?.message || 'Google API error');
     }
 
     let reply = data.candidates?.[0]?.content?.parts?.[0]?.text || 
                   "Baby Hawk is in deep meditation... 🧘‍♀️✨";
-
-    // Ensure code blocks are properly closed
-    const backtickCount = (reply.match(/```/g) || []).length;
-    if (backtickCount > 0 && backtickCount % 2 !== 0) {
-      reply += '\n```';
-    }
-
-    console.log('Response length:', reply.length);
-    console.log('Has code block:', reply.includes('```'));
 
     return res.status(200).json({
       choices: [{
