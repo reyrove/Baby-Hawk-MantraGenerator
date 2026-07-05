@@ -18,44 +18,63 @@ module.exports = async (req, res) => {
     const userMessage = messages.find(m => m.role === 'user')?.content || '';
     const systemPrompt = messages.find(m => m.role === 'system')?.content || '';
 
-    // Use the stable gemini-pro model
-    const model = 'gemini-pro';
-    
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GOOGLE_API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{
-              text: `${systemPrompt}\n\nUser: ${userMessage}\n\nBaby Hawk:`
-            }]
-          }],
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 2048,
-          }
-        })
-      }
-    );
+    // Try multiple models in order
+    const modelsToTry = [
+      'gemini-1.5-pro',
+      'gemini-1.5-flash', 
+      'gemini-pro',
+      'gemini-1.0-pro',
+      'text-bison-001'
+    ];
 
-    const data = await response.json();
-    
-    if (!response.ok) {
-      console.error('Google API Error:', data);
-      throw new Error(data.error?.message || 'Google API error');
+    let lastError = null;
+
+    for (const model of modelsToTry) {
+      try {
+        console.log(`Attempting model: ${model}`);
+        
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GOOGLE_API_KEY}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{
+                parts: [{
+                  text: `${systemPrompt}\n\nUser: ${userMessage}\n\nBaby Hawk:`
+                }]
+              }],
+              generationConfig: {
+                temperature: 0.7,
+                maxOutputTokens: 2048,
+              }
+            })
+          }
+        );
+
+        const data = await response.json();
+        
+        if (response.ok && data.candidates?.[0]?.content?.parts?.[0]?.text) {
+          console.log(`Success with model: ${model}`);
+          const reply = data.candidates[0].content.parts[0].text;
+          
+          return res.status(200).json({
+            choices: [{ message: { content: reply } }]
+          });
+        }
+        
+        lastError = data.error?.message || 'Model returned invalid response';
+        console.log(`Model ${model} failed:`, lastError);
+        
+      } catch (error) {
+        lastError = error.message;
+        console.log(`Model ${model} threw error:`, lastError);
+      }
     }
 
-    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || 
-                  "Baby Hawk is in deep meditation... 🧘‍♀️✨";
+    // If all models fail
+    throw new Error(`All models failed. Last error: ${lastError}`);
 
-    return res.status(200).json({
-      choices: [{
-        message: { content: reply }
-      }]
-    });
-    
   } catch (error) {
     console.error('Baby Hawk API Error:', error);
     return res.status(500).json({ 
