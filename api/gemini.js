@@ -52,6 +52,17 @@ module.exports = async (req, res) => {
     let reply = data.candidates?.[0]?.content?.parts?.[0]?.text || 
                   "Baby Hawk is in deep meditation... 🧘‍♀️✨";
 
+    // Remove markdown formatting: asterisks (*) and hashes (#)
+    reply = reply
+      .replace(/\*\*(.*?)\*\*/g, '$1')  // Remove bold (**text**)
+      .replace(/\*(.*?)\*/g, '$1')      // Remove italic (*text*)
+      .replace(/### (.*?)(\n|$)/g, '$1$2')  // Remove ### headings
+      .replace(/## (.*?)(\n|$)/g, '$1$2')   // Remove ## headings
+      .replace(/# (.*?)(\n|$)/g, '$1$2')    // Remove # headings
+      .replace(/^[#*]+\s*/gm, '')       // Remove any leading # or * at start of lines
+      .replace(/\n{3,}/g, '\n\n')       // Replace 3+ newlines with 2
+      .trim();
+
     return res.status(200).json({
       choices: [{
         message: { content: reply }
